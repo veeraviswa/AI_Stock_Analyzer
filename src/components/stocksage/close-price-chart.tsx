@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { StockData } from '@/lib/types';
