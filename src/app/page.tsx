@@ -1,5 +1,5 @@
-import { StockSageDashboard } from "@/components/stocksage/stocksage-dashboard";
+import { LoginPage } from "@/components/stocksage/login-page";
 
 export default function Home() {
-  return <StockSageDashboard />;
+  return <LoginPage />;
 }
