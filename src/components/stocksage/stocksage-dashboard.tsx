@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  TrendingUp, BarChart, Wallet, BrainCircuit, LineChart as LineChartIcon, SlidersHorizontal, CandlestickChart as CandlestickChartIcon, PanelLeft, Bot, MessageSquare
+  TrendingUp, BarChart, Wallet, BrainCircuit, LineChart as LineChartIcon, SlidersHorizontal, CandlestickChart as CandlestickChartIcon, PanelLeft, Bot, MessageSquare, Calendar as CalendarIcon
 } from 'lucide-react';
 
 import { predictNextDayPrice } from '@/ai/flows/next-day-price-prediction';
@@ -16,9 +16,14 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
+import { addDays, format } from 'date-fns';
+
 
 import type { StockData } from '@/lib/types';
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatDate, formatNumber, cn } from '@/lib/utils';
 import { FileUploader } from './file-uploader';
 import { MetricCard } from './metric-card';
 import { ClosePriceChart } from './close-price-chart';
@@ -28,7 +33,8 @@ import { Chatbot } from './chatbot';
 
 export function StockSageDashboard() {
   const [rawCsv, setRawCsv] = useState<string | null>(null);
-  const [stockData, setStockData] = useState<StockData[]>([]);
+  const [allStockData, setAllStockData] = useState<StockData[]>([]);
+  const [filteredStockData, setFilteredStockData] = useState<StockData[]>([]);
   const [fileName, setFileName] = useState<string>('your_data.csv');
   const [isLoading, setIsLoading] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -37,6 +43,8 @@ export function StockSageDashboard() {
   const [metrics, setMetrics] = useState({ trend: 'N/A', volatility: 'N/A', volume: 'N/A' });
   const [prediction, setPrediction] = useState<{ predictedPrice: number; analysis: string } | null>(null);
   const [recommendation, setRecommendation] = useState<{ recommendation: string; reasoning: string } | null>(null);
+  
+  const [date, setDate] = React.useState<DateRange | undefined>();
 
   const [movingAverages, setMovingAverages] = useState({ ma7: true, ma14: true, ma30: false });
   const [showPrediction, setShowPrediction] = useState(true);
@@ -46,7 +54,9 @@ export function StockSageDashboard() {
   const handleFileUpload = (content: string, name: string) => {
     setRawCsv(content);
     setFileName(name);
-    setStockData([]);
+    setAllStockData([]);
+    setFilteredStockData([]);
+    setDate(undefined);
     setMetrics({ trend: 'N/A', volatility: 'N/A', volume: 'N/A' });
     setPrediction(null);
     setRecommendation(null);
@@ -83,13 +93,26 @@ export function StockSageDashboard() {
     
     const parsedData = parseCSV(rawCsv);
     if (parsedData.length > 0) {
-      setStockData(parsedData);
+      setAllStockData(parsedData);
+      setFilteredStockData(parsedData);
+      setDate({ from: parsedData[0].Date, to: parsedData[parsedData.length - 1].Date });
     }
     setIsLoading(false);
   }, [rawCsv, toast]);
 
   useEffect(() => {
-    if (stockData.length < 1) return;
+    if (allStockData.length === 0) return;
+
+    const start = date?.from || allStockData[0].Date;
+    const end = date?.to || allStockData[allStockData.length - 1].Date;
+
+    const filtered = allStockData.filter(d => d.Date >= start && d.Date <= end);
+    setFilteredStockData(filtered);
+
+  }, [date, allStockData]);
+
+  useEffect(() => {
+    if (filteredStockData.length < 1) return;
 
     const calculateMetrics = (data: StockData[]): StockData[] => {
         const dataWithMAs = [...data];
@@ -117,7 +140,7 @@ export function StockSageDashboard() {
         return dataWithMAs;
     };
     
-    const processedData = calculateMetrics(stockData);
+    const processedData = calculateMetrics(filteredStockData);
 
     const trend = processedData.length > 1 && processedData[processedData.length-1].Close > processedData[0].Close ? 'Uptrend' : 'Downtrend';
     
@@ -138,7 +161,7 @@ export function StockSageDashboard() {
         volume: processedData.length > 0 ? processedData[processedData.length-1].Volume.toLocaleString() : 'N/A'
     });
 
-    setStockData(processedData);
+    setFilteredStockData(processedData);
 
     const runAiFlows = async () => {
         if (!rawCsv) return;
@@ -161,23 +184,25 @@ export function StockSageDashboard() {
             setIsAiProcessing(false);
         }
     };
-    runAiFlows();
-  }, [stockData.length, rawCsv, toast]);
+    if(filteredStockData.length > 0) {
+        runAiFlows();
+    }
+  }, [filteredStockData.length, rawCsv, toast]);
 
 
   const stockDataSummary = useMemo(() => {
-    if (!stockData.length) return "No stock data is loaded.";
-    const latestData = stockData[stockData.length - 1];
+    if (!filteredStockData.length) return "No stock data is loaded.";
+    const latestData = filteredStockData[filteredStockData.length - 1];
     return `
       Data for: ${fileName}.
-      Date Range: ${formatDate(stockData[0].Date)} to ${formatDate(latestData.Date)}.
+      Date Range: ${formatDate(filteredStockData[0].Date)} to ${formatDate(latestData.Date)}.
       Latest Close Price: ${latestData.Close.toFixed(2)}.
       Overall Trend: ${metrics.trend}.
       Volatility: ${metrics.volatility}.
       Next-Day Price Prediction: ${prediction ? `${prediction.predictedPrice.toFixed(2)} (${prediction.analysis})` : 'Not available'}.
       AI Recommendation: ${recommendation ? `${recommendation.recommendation} (${recommendation.reasoning})` : 'Not available'}.
     `;
-  }, [stockData, fileName, metrics, prediction, recommendation]);
+  }, [filteredStockData, fileName, metrics, prediction, recommendation]);
   
   const SidebarContent = () => (
     <div className="flex h-full max-h-screen flex-col gap-2">
@@ -189,8 +214,48 @@ export function StockSageDashboard() {
       </div>
       <div className="flex-1 overflow-auto py-2">
         <div className="px-4 lg:px-6">
-            <h3 className="mb-2 font-semibold">Upload Data</h3>
-            <FileUploader onFileUpload={handleFileUpload} setLoading={setIsLoading} />
+            <h3 className="mb-2 font-semibold">Data Settings</h3>
+            <div className="grid gap-2">
+                <Label htmlFor="date-range">Date range</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date-range"
+                        variant={"outline"}
+                        className={cn(
+                        "justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                        )}
+                        disabled={allStockData.length === 0}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                        date.to ? (
+                            <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(date.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Pick a date range</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                        disabled={(day) => allStockData.length > 0 ? (day < allStockData[0].Date || day > allStockData[allStockData.length - 1].Date) : true}
+                    />
+                    </PopoverContent>
+                </Popover>
+            </div>
         </div>
         <Separator className="my-4" />
         <div className="px-4 lg:px-6">
@@ -198,21 +263,21 @@ export function StockSageDashboard() {
             <div className="space-y-2">
                 <Label>Moving Averages</Label>
                 <div className="flex items-center space-x-2">
-                    <Checkbox id="ma7" checked={movingAverages.ma7} onCheckedChange={(c) => setMovingAverages(p => ({...p, ma7: !!c}))} />
+                    <Checkbox id="ma7" checked={movingAverages.ma7} onCheckedChange={(c) => setMovingAverages(p => ({...p, ma7: !!c}))} disabled={allStockData.length === 0} />
                     <Label htmlFor="ma7" className="font-normal">7-Day</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Checkbox id="ma14" checked={movingAverages.ma14} onCheckedChange={(c) => setMovingAverages(p => ({...p, ma14: !!c}))}/>
+                    <Checkbox id="ma14" checked={movingAverages.ma14} onCheckedChange={(c) => setMovingAverages(p => ({...p, ma14: !!c}))} disabled={allStockData.length === 0} />
                     <Label htmlFor="ma14" className="font-normal">14-Day</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Checkbox id="ma30" checked={movingAverages.ma30} onCheckedChange={(c) => setMovingAverages(p => ({...p, ma30: !!c}))}/>
+                    <Checkbox id="ma30" checked={movingAverages.ma30} onCheckedChange={(c) => setMovingAverages(p => ({...p, ma30: !!c}))} disabled={allStockData.length === 0} />
                     <Label htmlFor="ma30" className="font-normal">30-Day</Label>
                 </div>
             </div>
             <div className="flex items-center justify-between mt-4">
                 <Label htmlFor="show-prediction">Show Prediction</Label>
-                <Switch id="show-prediction" checked={showPrediction} onCheckedChange={setShowPrediction} />
+                <Switch id="show-prediction" checked={showPrediction} onCheckedChange={setShowPrediction} disabled={allStockData.length === 0} />
             </div>
         </div>
       </div>
@@ -242,14 +307,14 @@ export function StockSageDashboard() {
                 <span className="">StockSage</span>
             </a>
             <div className="flex-1" />
-            <Button variant="outline" size="icon" onClick={() => setIsChatOpen(!isChatOpen)} disabled={stockData.length === 0}>
+            <Button variant="outline" size="icon" onClick={() => setIsChatOpen(!isChatOpen)} disabled={allStockData.length === 0}>
                 <MessageSquare className="h-5 w-5" />
                 <span className="sr-only">Toggle Chat</span>
             </Button>
         </header>
         <div className="flex flex-1 overflow-hidden">
             <main className="flex-1 overflow-auto p-4 md:gap-8 md:p-6 bg-muted/40">
-            {stockData.length > 0 ? (
+            {allStockData.length > 0 ? (
                 <div className="grid gap-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                         <MetricCard title="Trend" value={metrics.trend} icon={TrendingUp} isLoading={isAiProcessing} />
@@ -260,13 +325,13 @@ export function StockSageDashboard() {
                     </div>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <div className="lg:col-span-3">
-                            <ClosePriceChart data={stockData} movingAverages={movingAverages} />
+                            <ClosePriceChart data={filteredStockData} movingAverages={movingAverages} />
                         </div>
                         <div className="lg:col-span-2">
-                            <CandlestickChart data={stockData} prediction={showPrediction ? prediction?.predictedPrice : undefined} />
+                            <CandlestickChart data={filteredStockData} prediction={showPrediction ? prediction?.predictedPrice : undefined} />
                         </div>
                         <div className="lg:col-span-1">
-                            <VolumeChart data={stockData} />
+                            <VolumeChart data={filteredStockData} />
                         </div>
                     </div>
                 </div>
@@ -287,9 +352,9 @@ export function StockSageDashboard() {
               </div>
             )}
             </main>
-            {isChatOpen && stockData.length > 0 && (
+            {isChatOpen && allStockData.length > 0 && (
                 <aside className="w-full max-w-sm border-l bg-background">
-                    <Chatbot stockDataSummary={stockDataSummary} isDataLoaded={stockData.length > 0} />
+                    <Chatbot stockDataSummary={stockDataSummary} isDataLoaded={allStockData.length > 0} />
                 </aside>
             )}
         </div>
@@ -297,3 +362,5 @@ export function StockSageDashboard() {
     </div>
   );
 }
+
+    
