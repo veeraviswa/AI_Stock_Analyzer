@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  TrendingUp, BarChart, Wallet, BrainCircuit, LineChart as LineChartIcon, SlidersHorizontal, CandlestickChart as CandlestickChartIcon, PanelLeft, Bot
+  TrendingUp, BarChart, Wallet, BrainCircuit, LineChart as LineChartIcon, SlidersHorizontal, CandlestickChart as CandlestickChartIcon, PanelLeft, Bot, MessageSquare
 } from 'lucide-react';
 
 import { predictNextDayPrice } from '@/ai/flows/next-day-price-prediction';
@@ -32,6 +32,7 @@ export function StockSageDashboard() {
   const [fileName, setFileName] = useState<string>('your_data.csv');
   const [isLoading, setIsLoading] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true);
 
   const [metrics, setMetrics] = useState({ trend: 'N/A', volatility: 'N/A', volume: 'N/A' });
   const [prediction, setPrediction] = useState<{ predictedPrice: number; analysis: string } | null>(null);
@@ -224,63 +225,74 @@ export function StockSageDashboard() {
         <SidebarContent />
       </div>
       <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:hidden">
+        <header className="flex h-14 items-center gap-4 border-b bg-background px-4">
             <Sheet>
                 <SheetTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" className="md:hidden">
                         <PanelLeft className="h-5 w-5" />
                         <span className="sr-only">Toggle sidebar</span>
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] p-0">
+                <SheetContent side="left" className="w-[280px] p-0 md:hidden">
                     <SidebarContent />
                 </SheetContent>
             </Sheet>
-            <a href="/" className="flex items-center gap-2 font-semibold text-lg">
+            <a href="/" className="flex items-center gap-2 font-semibold text-lg md:hidden">
                 <CandlestickChartIcon className="h-6 w-6 text-primary" />
                 <span className="">StockSage</span>
             </a>
+            <div className="flex-1" />
+            <Button variant="outline" size="icon" onClick={() => setIsChatOpen(!isChatOpen)} disabled={stockData.length === 0}>
+                <MessageSquare className="h-5 w-5" />
+                <span className="sr-only">Toggle Chat</span>
+            </Button>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6 bg-muted/40">
-        {stockData.length > 0 ? (
-            <>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    <MetricCard title="Trend" value={metrics.trend} icon={TrendingUp} isLoading={isAiProcessing} />
-                    <MetricCard title="Volatility" value={metrics.volatility.split(' ')[0]} description={metrics.volatility.split(' ').slice(1).join(' ')} icon={SlidersHorizontal} isLoading={isAiProcessing} />
-                    <MetricCard title="Volume" value={formatNumber(parseFloat(metrics.volume.replace(/,/g, '')))} icon={BarChart} isLoading={isAiProcessing} />
-                    <MetricCard title="Prediction" value={prediction ? `$${prediction.predictedPrice.toFixed(2)}` : 'N/A'} description={prediction?.analysis} icon={LineChartIcon} isLoading={isAiProcessing}/>
-                    <MetricCard title="Recommendation" value={recommendation?.recommendation || 'N/A'} description={recommendation?.reasoning} icon={BrainCircuit} isLoading={isAiProcessing} />
+        <div className="flex flex-1 overflow-hidden">
+            <main className="flex-1 overflow-auto p-4 md:gap-8 md:p-6 bg-muted/40">
+            {stockData.length > 0 ? (
+                <div className="grid gap-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                        <MetricCard title="Trend" value={metrics.trend} icon={TrendingUp} isLoading={isAiProcessing} />
+                        <MetricCard title="Volatility" value={metrics.volatility.split(' ')[0]} description={metrics.volatility.split(' ').slice(1).join(' ')} icon={SlidersHorizontal} isLoading={isAiProcessing} />
+                        <MetricCard title="Volume" value={formatNumber(parseFloat(metrics.volume.replace(/,/g, '')))} icon={BarChart} isLoading={isAiProcessing} />
+                        <MetricCard title="Prediction" value={prediction ? `$${prediction.predictedPrice.toFixed(2)}` : 'N/A'} description={prediction?.analysis} icon={LineChartIcon} isLoading={isAiProcessing}/>
+                        <MetricCard title="Recommendation" value={recommendation?.recommendation || 'N/A'} description={recommendation?.reasoning} icon={BrainCircuit} isLoading={isAiProcessing} />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="lg:col-span-3">
+                            <ClosePriceChart data={stockData} movingAverages={movingAverages} />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <CandlestickChart data={stockData} prediction={showPrediction ? prediction?.predictedPrice : undefined} />
+                        </div>
+                        <div className="lg:col-span-1">
+                            <VolumeChart data={stockData} />
+                        </div>
+                    </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <div className="lg:col-span-3">
-                        <ClosePriceChart data={stockData} movingAverages={movingAverages} />
-                    </div>
-                    <div className="lg:col-span-2">
-                        <CandlestickChart data={stockData} prediction={showPrediction ? prediction?.predictedPrice : undefined} />
-                    </div>
-                    <div className="lg:col-span-1">
-                        <VolumeChart data={stockData} />
-                    </div>
-                    <Chatbot stockDataSummary={stockDataSummary} isDataLoaded={stockData.length > 0} />
+            ) : (
+                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm h-full">
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Bot className="h-16 w-16 text-muted-foreground" />
+                  <h3 className="text-2xl font-bold tracking-tight">
+                    Welcome to StockSage
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Upload a CSV file of your stock data to begin your analysis. The AI will help you with predictions, recommendations, and insights.
+                  </p>
+                  <div className="w-full max-w-sm mt-4">
+                    <FileUploader onFileUpload={handleFileUpload} setLoading={setIsLoading} />
+                  </div>
                 </div>
-            </>
-        ) : (
-            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <Bot className="h-16 w-16 text-muted-foreground" />
-              <h3 className="text-2xl font-bold tracking-tight">
-                Welcome to StockSage
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Upload a CSV file of your stock data to begin your analysis. The AI will help you with predictions, recommendations, and insights.
-              </p>
-              <div className="w-full max-w-sm mt-4">
-                <FileUploader onFileUpload={handleFileUpload} setLoading={setIsLoading} />
               </div>
-            </div>
-          </div>
-        )}
-        </main>
+            )}
+            </main>
+            {isChatOpen && stockData.length > 0 && (
+                <aside className="w-full max-w-sm border-l bg-background">
+                    <Chatbot stockDataSummary={stockDataSummary} isDataLoaded={stockData.length > 0} />
+                </aside>
+            )}
+        </div>
       </div>
     </div>
   );

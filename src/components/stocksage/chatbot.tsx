@@ -52,19 +52,19 @@ export function Chatbot({ stockDataSummary, isDataLoaded }: ChatbotProps) {
   };
 
   return (
-    <Card className="col-span-1 lg:col-span-2 row-span-2 flex flex-col">
-      <CardHeader>
+    <div className="flex flex-col h-full">
+      <CardHeader className="flex-shrink-0">
         <CardTitle>StockSage Chat</CardTitle>
         <CardDescription>Ask questions about the loaded stock data.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col">
-        <ScrollArea className="flex-grow h-64 pr-4 -mr-4 mb-4">
+      <CardContent className="flex-grow flex flex-col overflow-hidden p-4">
+        <ScrollArea className="flex-grow pr-4 -mr-4 mb-4">
             <div className="space-y-4">
                 {messages.length === 0 && (
                     <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-muted-foreground">
+                        <div className="text-center text-muted-foreground p-8">
                             <Bot className="h-10 w-10 mx-auto mb-2" />
-                            <p>Upload a CSV to start chatting.</p>
+                            <p>Ask me anything about the current stock data. For example: "What's the overall trend?" or "What's the latest prediction?"</p>
                         </div>
                     </div>
                 )}
@@ -94,7 +94,7 @@ export function Chatbot({ stockDataSummary, isDataLoaded }: ChatbotProps) {
                 )}
             </div>
         </ScrollArea>
-        <form onSubmit={handleSendMessage} className="relative mt-auto">
+        <form onSubmit={handleSendMessage} className="relative mt-auto flex-shrink-0">
           <Input
             placeholder={isDataLoaded ? "Ask about trends, predictions..." : "Please upload a CSV first"}
             value={input}
@@ -107,6 +107,6 @@ export function Chatbot({ stockDataSummary, isDataLoaded }: ChatbotProps) {
           </Button>
         </form>
       </CardContent>
-    </Card>
+    </div>
   );
 }
