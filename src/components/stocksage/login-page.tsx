@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,14 @@ export function LoginPage() {
                 />
             </div>
             </CardContent>
-            <CardFooter>
-            <Button type="submit" className="w-full">Sign in</Button>
+            <CardFooter className="flex-col gap-4">
+                <Button type="submit" className="w-full">Sign in</Button>
+                <div className="text-sm">
+                    Don't have an account?{' '}
+                    <Link href="/signup" className="underline">
+                        Sign up
+                    </Link>
+                </div>
             </CardFooter>
         </form>
       </Card>
