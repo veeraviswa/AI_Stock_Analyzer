@@ -3,11 +3,11 @@
 import React from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { StockData } from '@/lib/types';
+import type { Stock } from '@/lib/types';
 import { formatCompactNumber, formatDate } from '@/lib/utils';
 
 interface ClosePriceChartProps {
-  data: StockData[];
+  stocks: Stock[];
   movingAverages: {
     ma7: boolean;
     ma14: boolean;
@@ -19,14 +19,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-background p-2 shadow-sm">
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-          <p className="text-sm text-muted-foreground col-span-2">{formatDate(new Date(label))}</p>
-          <p className="text-sm font-medium text-foreground">Close:</p>
-          <p className="text-sm text-right">{payload[0].value.toFixed(2)}</p>
-          {payload.map((p: any) => p.dataKey !== 'Close' && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+          <p className="text-sm text-muted-foreground col-span-2 mb-1">{formatDate(new Date(label))}</p>
+          {payload.map((p: any) => (
             <React.Fragment key={p.dataKey}>
-              <p className="text-sm font-medium" style={{color: p.color}}>{p.name}:</p>
-              <p className="text-sm text-right" style={{color: p.color}}>{p.value.toFixed(2)}</p>
+              <p className="text-sm font-medium flex items-center" style={{color: p.stroke}}>
+                <span className="w-2 h-2 rounded-full mr-2" style={{backgroundColor: p.stroke}}></span>
+                {p.name}:
+              </p>
+              <p className="text-sm text-right font-mono">{`$${p.value.toFixed(2)}`}</p>
             </React.Fragment>
           ))}
         </div>
@@ -37,16 +38,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 
-export function ClosePriceChart({ data, movingAverages }: ClosePriceChartProps) {
+export function ClosePriceChart({ stocks, movingAverages }: ClosePriceChartProps) {
+    // Combine data for charting
+    const combinedData = new Map();
+    stocks.forEach(stock => {
+        stock.filteredData.forEach(d => {
+            const dateStr = d.Date.toISOString().split('T')[0];
+            if (!combinedData.has(dateStr)) {
+                combinedData.set(dateStr, { Date: d.Date });
+            }
+            const entry = combinedData.get(dateStr);
+            entry[`${stock.name}_Close`] = d.Close;
+            if(movingAverages.ma7) entry[`${stock.name}_ma7`] = d.ma7;
+            if(movingAverages.ma14) entry[`${stock.name}_ma14`] = d.ma14;
+            if(movingAverages.ma30) entry[`${stock.name}_ma30`] = d.ma30;
+        });
+    });
+
+    const chartData = Array.from(combinedData.values()).sort((a,b) => a.Date - b.Date);
+
   return (
-    <Card className="col-span-1 lg:col-span-2">
+    <Card className="col-span-1 lg:col-span-3">
       <CardHeader>
-        <CardTitle>Close Price</CardTitle>
-        <CardDescription>Stock closing price with moving averages.</CardDescription>
+        <CardTitle>Close Price Comparison</CardTitle>
+        <CardDescription>Stock closing prices with optional moving averages.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
               dataKey="Date"
@@ -63,13 +82,22 @@ export function ClosePriceChart({ data, movingAverages }: ClosePriceChartProps) 
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              width={80}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Line type="monotone" dataKey="Close" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} name="Close" />
-            {movingAverages.ma7 && <Line type="monotone" dataKey="ma7" stroke="hsl(var(--chart-2))" strokeWidth={1.5} dot={false} name="7-Day MA" />}
-            {movingAverages.ma14 && <Line type="monotone" dataKey="ma14" stroke="hsl(var(--chart-3))" strokeWidth={1.5} dot={false} name="14-Day MA" />}
-            {movingAverages.ma30 && <Line type="monotone" dataKey="ma30" stroke="hsl(var(--chart-4))" strokeWidth={1.5} dot={false} name="30-Day MA" />}
+            {stocks.map(stock => (
+                <Line key={stock.id} type="monotone" dataKey={`${stock.name}_Close`} stroke={stock.color} strokeWidth={2} dot={false} name={stock.name} />
+            ))}
+             {movingAverages.ma7 && stocks.map(stock => (
+                <Line key={`${stock.id}-ma7`} type="monotone" dataKey={`${stock.name}_ma7`} stroke={stock.color} strokeWidth={1} dot={false} name={`${stock.name} 7-Day MA`} strokeDasharray="3 3"/>
+            ))}
+            {movingAverages.ma14 && stocks.map(stock => (
+                <Line key={`${stock.id}-ma14`} type="monotone" dataKey={`${stock.name}_ma14`} stroke={stock.color} strokeWidth={1} dot={false} name={`${stock.name} 14-Day MA`} strokeDasharray="5 5"/>
+            ))}
+            {movingAverages.ma30 && stocks.map(stock => (
+                <Line key={`${stock.id}-ma30`} type="monotone" dataKey={`${stock.name}_ma30`} stroke={stock.color} strokeWidth={1} dot={false} name={`${stock.name} 30-Day MA`} strokeDasharray="7 7"/>
+            ))}
           </LineChart>
         </ResponsiveContainer>
       </CardContent>

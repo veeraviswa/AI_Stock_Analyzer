@@ -9,6 +9,7 @@ import { formatCompactNumber, formatDate } from '@/lib/utils';
 interface CandlestickChartProps {
   data: StockData[];
   prediction?: number;
+  stockName: string;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -45,17 +46,17 @@ const Candlestick = (props: any) => {
   };
   
 
-export function CandlestickChart({ data, prediction }: CandlestickChartProps) {
+export function CandlestickChart({ data, prediction, stockName }: CandlestickChartProps) {
     const chartData = data.map(d => ({
         ...d,
         body: [d.Open, d.Close]
     }));
 
   return (
-    <Card>
+    <Card className='lg:col-span-2'>
       <CardHeader>
-        <CardTitle>Candlestick Chart</CardTitle>
-        <CardDescription>Daily Open, High, Low, and Close prices.</CardDescription>
+        <CardTitle>Candlestick Chart: {stockName}</CardTitle>
+        <CardDescription>Daily Open, High, Low, and Close prices for the primary stock.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -76,6 +77,7 @@ export function CandlestickChart({ data, prediction }: CandlestickChartProps) {
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
+                    width={80}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsla(var(--primary), 0.1)'}} />
                 

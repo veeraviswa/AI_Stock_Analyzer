@@ -4,13 +4,15 @@ import { UploadCloud } from 'lucide-react';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 interface FileUploaderProps {
   onFileUpload: (content: string, fileName: string) => void;
   setLoading: (loading: boolean) => void;
+  buttonOnly?: boolean;
 }
 
-export function FileUploader({ onFileUpload, setLoading }: FileUploaderProps) {
+export function FileUploader({ onFileUpload, setLoading, buttonOnly = false }: FileUploaderProps) {
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -51,6 +53,18 @@ export function FileUploader({ onFileUpload, setLoading }: FileUploaderProps) {
     maxFiles: 1,
     accept: {'text/csv': ['.csv']} 
   });
+
+  if (buttonOnly) {
+    return (
+        <div {...getRootProps()} className="w-full">
+            <input {...getInputProps()} />
+            <Button variant="outline" className="w-full">
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Add Stock Data
+            </Button>
+        </div>
+    )
+  }
 
   return (
     <div

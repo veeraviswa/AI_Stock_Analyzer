@@ -7,6 +7,7 @@ import { formatCompactNumber, formatDate } from '@/lib/utils';
 
 interface VolumeChartProps {
   data: StockData[];
+  stockName: string;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -21,7 +22,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
   };
 
-export function VolumeChart({ data }: VolumeChartProps) {
+export function VolumeChart({ data, stockName }: VolumeChartProps) {
 
   const dataWithSpike = data.map(d => ({
     ...d,
@@ -31,11 +32,11 @@ export function VolumeChart({ data }: VolumeChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Volume Trend</CardTitle>
+        <CardTitle>Volume: {stockName}</CardTitle>
         <CardDescription>Daily trading volume with significant spikes highlighted.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={dataWithSpike}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
@@ -52,6 +53,7 @@ export function VolumeChart({ data }: VolumeChartProps) {
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              width={80}
             />
             <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsla(var(--primary), 0.1)'}} />
             <Bar dataKey="Volume">
